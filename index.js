@@ -5,7 +5,7 @@ const port = process.env.PORT || 3000;
 const dotenv = require("dotenv");
 dotenv.config();
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://FinEase:${process.env.MongoDb_pass}@cluster0.we4ne2s.mongodb.net/?appName=Cluster0`;
 const client = new MongoClient(uri, {
   serverApi: {
@@ -46,6 +46,16 @@ async function run() {
         result
       });
     });
+
+    // single Transaction Detail api
+    app.get('/transactions/:id', async (req, res) =>{
+      const {id} = req.params;
+      const objectId = new ObjectId(id)
+      const result = await myTransactionsCol.findOne({_id: objectId});
+      res.send({
+        result
+      })
+    })
 
     await client.db("admin").command({ ping: 1 });
     console.log(
