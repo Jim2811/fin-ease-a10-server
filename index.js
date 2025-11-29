@@ -33,11 +33,8 @@ async function run() {
     const myTransactionsCol = db.collection("transactions");
     // Transaction API
     app.get("/transactions", async (req, res) => {
-      const data = req.body;
-      console.log(data);
-      res.send({
-        success: true,
-      });
+      const result = await myTransactionsCol.find().toArray();
+      res.send(result);
     });
     // post api
     app.post("/transactions", async (req, res) => {
