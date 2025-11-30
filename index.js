@@ -57,6 +57,22 @@ async function run() {
       })
     })
 
+    // total price in category api
+    app.get('/category-total-amount', async (req, res)=>{
+      const category = req.query.category;
+      const result = await myTransactionsCol.aggregate([
+        {
+          $match: { category: category }
+        },
+        {
+          $group: {
+            _id: "$category",
+            total: {$sum: "$amount"}
+          }
+        }
+      ]).toArray();
+      res.send(result)
+    })
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
