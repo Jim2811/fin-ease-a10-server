@@ -50,7 +50,7 @@ async function run() {
     // single Transaction Detail api
     app.get('/transactions/:id', async (req, res) =>{
       const {id} = req.params;
-      const objectId = new ObjectId(id)
+      const objectId = new ObjectId(id);
       const result = await myTransactionsCol.findOne({_id: objectId});
       res.send({
         result
@@ -72,6 +72,23 @@ async function run() {
         }
       ]).toArray();
       res.send(result)
+    })
+
+    // Update Request API
+    app.put('/transactions/:id', async (req, res)=>{
+      const {id} = req.params;
+      const data = req.body;
+      const objectId = new ObjectId(id);
+      const filter = {_id: objectId};
+      const update = {
+        $set: data
+      }
+      const result = await myTransactionsCol.updateOne(filter, update)
+
+      res.send({
+        success: true,
+        result
+      })
     })
     await client.db("admin").command({ ping: 1 });
     console.log(
