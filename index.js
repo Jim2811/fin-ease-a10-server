@@ -53,8 +53,9 @@ async function run() {
     const db = client.db("FinEase");
     const myTransactionsCol = db.collection("transactions");
     // Transaction API
-    app.get("/transactions", sdkMiddleware, async (req, res) => {
-      const result = await myTransactionsCol.find().toArray();
+    app.get("/transactions", async (req, res) => {
+      const mail = req.query.email
+      const result = await myTransactionsCol.find({email: mail}).toArray();
       res.send(result);
     });
     // post api
