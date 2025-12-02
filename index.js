@@ -30,6 +30,21 @@ app.get("/", (req, res) => {
   res.send("FinEase Server is running");
 });
 
+// sdk middleware
+const sdkMiddleware = async (req, res, next) =>{
+  const authorization = req.headers.authorization;
+  if(!authorization){
+      return res.status(401).send({message: "Unauthorized access!"})
+  }
+  const token = authorization.split(' ')[1]
+  try{
+    await admin.auth().verifyIdToken(token)
+    next()
+  }catch{
+    return res.status(401).send({message: "Unauthorized access!"})
+  }
+}
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -38,7 +53,7 @@ async function run() {
     const db = client.db("FinEase");
     const myTransactionsCol = db.collection("transactions");
     // Transaction API
-    app.get("/transactions", async (req, res) => {
+    app.get("/transactions", sdkMiddleware, async (req, res) => {
       const result = await myTransactionsCol.find().toArray();
       res.send(result);
     });
