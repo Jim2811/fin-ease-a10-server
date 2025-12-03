@@ -38,7 +38,8 @@ const sdkMiddleware = async (req, res, next) =>{
   }
   const token = authorization.split(' ')[1]
   try{
-    await admin.auth().verifyIdToken(token)
+    const decode = await admin.auth().verifyIdToken(token)
+    req.user = decode
     next()
   }catch{
     return res.status(401).send({message: "Unauthorized access!"})
@@ -70,10 +71,15 @@ async function run() {
     });
 
     // single Transaction Detail api
-    app.get('/transactions/:id', async (req, res) =>{
+    app.get('/transactions/:id',sdkMiddleware, async (req, res) =>{
+      const decode = req.user
+      const userEmail = decode.email
       const {id} = req.params;
       const objectId = new ObjectId(id);
       const result = await myTransactionsCol.findOne({_id: objectId});
+      if(userEmail != result.email){
+        return res.status(401).send({message: "Unauthorized access!"})
+      }
       res.send({
         result
       })
