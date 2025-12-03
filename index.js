@@ -109,16 +109,21 @@ async function run() {
     });
 
     // Update Request API
-    app.put("/transactions/:id", async (req, res) => {
+    app.put("/transactions/:id", sdkMiddleware, async (req, res) => {
       const { id } = req.params;
+      const decode = req.user;
+      const userEmail = decode.email;
       const data = req.body;
       const objectId = new ObjectId(id);
       const filter = { _id: objectId };
       const update = {
         $set: data,
       };
+      const transaction = await myTransactionsCol.findOne({ _id: objectId })
       const result = await myTransactionsCol.updateOne(filter, update);
-
+      if (userEmail != transaction.email) {
+        return res.status(401).send({ message: "Unauthorized access!" });
+      }
       res.send({
         success: true,
         result,
