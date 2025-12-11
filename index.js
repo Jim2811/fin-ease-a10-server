@@ -56,13 +56,16 @@ async function run() {
     // Transaction API
     app.get("/transactions", async (req, res) => {
       const mail = req.query.email;
-      const result = await myTransactionsCol.find({ email: mail }).toArray();
+      const result = await myTransactionsCol.find({ email: mail }).sort({
+        date: -1,
+        amount: -1
+      }
+      ).toArray();
       res.send(result);
     });
     // post api
     app.post("/transactions", async (req, res) => {
       const data = req.body;
-      console.log(data);
       const result = await myTransactionsCol.insertOne(data);
       res.send({
         success: true,
@@ -119,7 +122,7 @@ async function run() {
       const update = {
         $set: data,
       };
-      const transaction = await myTransactionsCol.findOne({ _id: objectId })
+      const transaction = await myTransactionsCol.findOne({ _id: objectId });
       const result = await myTransactionsCol.updateOne(filter, update);
       if (userEmail != transaction.email) {
         return res.status(401).send({ message: "Unauthorized access!" });
