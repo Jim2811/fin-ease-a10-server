@@ -3,14 +3,13 @@ const cors = require("cors");
 const app = express();
 const port = process.env.PORT || 3000;
 const dotenv = require("dotenv");
+dotenv.config();
 const admin = require("firebase-admin");
-const serviceAccount = require("./serviceKey.json");
+const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
+const serviceAccount = JSON.parse(decoded);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
-
-dotenv.config();
-
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://FinEase:${process.env.MongoDb_pass}@cluster0.we4ne2s.mongodb.net/?appName=Cluster0`;
 const client = new MongoClient(uri, {
@@ -49,7 +48,7 @@ const sdkMiddleware = async (req, res, next) => {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const db = client.db("FinEase");
     const myTransactionsCol = db.collection("transactions");
@@ -134,7 +133,7 @@ async function run() {
     });
 
     // delete request api
-    app.delete("/transactions/:id", async (req, res) => {
+    app.delete("/transactions/:id", sdkMiddleware, async (req, res) => {
       const { id } = req.params;
       const objectId = new ObjectId(id);
       const filter = { _id: objectId };
@@ -145,7 +144,7 @@ async function run() {
         result,
       });
     });
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
