@@ -5,7 +5,9 @@ const port = process.env.PORT || 3000;
 const dotenv = require("dotenv");
 dotenv.config();
 const admin = require("firebase-admin");
-const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
+const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
+  "utf8"
+);
 const serviceAccount = JSON.parse(decoded);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -30,36 +32,44 @@ app.get("/", (req, res) => {
 });
 
 // sdk middleware
-const sdkMiddleware = async (req, res, next) => {
-  const authorization = req.headers.authorization;
-  if (!authorization) {
-    return res.status(401).send({ message: "Unauthorized access!" });
-  }
-  const token = authorization.split(" ")[1];
+app.delete("/transactions/:id", async (req, res) => {
   try {
-    const decode = await admin.auth().verifyIdToken(token);
-    req.user = decode;
-    next();
-  } catch {
-    return res.status(401).send({ message: "Unauthorized access!" });
+    const { id } = req.params;
+    const objectId = new ObjectId(id);
+    const filter = { _id: objectId };
+    const transaction = await myTransactionsCol.findOne(filter);
+    if (!transaction) {
+      return res.status(404).send({ message: "Transaction not found" });
+    }
+    const result = await myTransactionsCol.deleteOne(filter);
+
+    res.send({
+      success: true,
+      result,
+    });
+  } catch (err) {
+    console.error("Delete error:", err);
+    res.status(500).send({ message: "Server error while deleting transaction" });
   }
-};
+});
 
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    // await client.connect();
+    await client.connect();
 
     const db = client.db("FinEase");
     const myTransactionsCol = db.collection("transactions");
     // Transaction API
     app.get("/transactions", async (req, res) => {
       const mail = req.query.email;
-      const result = await myTransactionsCol.find({ email: mail }).sort({
-        date: -1,
-        amount: -1
-      }
-      ).toArray();
+      const result = await myTransactionsCol
+        .find({ email: mail })
+        .sort({
+          date: -1,
+          amount: -1,
+        })
+        .toArray();
       res.send(result);
     });
     // post api
@@ -74,69 +84,54 @@ async function run() {
 
     // single Transaction Detail api
     app.get("/transactions/:id", sdkMiddleware, async (req, res) => {
-      const decode = req.user;
-      const userEmail = decode.email;
+      const userEmail = req.user.email;
       const { id } = req.params;
       const objectId = new ObjectId(id);
+
       const result = await myTransactionsCol.findOne({ _id: objectId });
-      if (userEmail != result.email) {
+      if (!result)
+        return res.status(404).send({ message: "Transaction not found" });
+
+      if (userEmail !== result.email) {
         return res.status(401).send({ message: "Unauthorized access!" });
       }
-      res.send({
-        result,
-      });
-    });
-
-    // total price in category api
-    app.get("/category-total-amount", sdkMiddleware, async (req, res) => {
-      const category = req.query.category;
-      const userEmail = req.user.email;
-      const result = await myTransactionsCol
-        .aggregate([
-          {
-            $match: {
-              category: category,
-              email: userEmail,
-            },
-          },
-          {
-            $group: {
-              _id: "$category",
-              total: { $sum: "$amount" },
-            },
-          },
-        ])
-        .toArray();
-      res.send(result);
+      res.send({ result });
     });
 
     // Update Request API
     app.put("/transactions/:id", sdkMiddleware, async (req, res) => {
       const { id } = req.params;
-      const decode = req.user;
-      const userEmail = decode.email;
+      const userEmail = req.user.email;
       const data = req.body;
       const objectId = new ObjectId(id);
       const filter = { _id: objectId };
-      const update = {
-        $set: data,
-      };
+
       const transaction = await myTransactionsCol.findOne({ _id: objectId });
-      const result = await myTransactionsCol.updateOne(filter, update);
-      if (userEmail != transaction.email) {
+      if (!transaction)
+        return res.status(404).send({ message: "Transaction not found" });
+
+      if (userEmail !== transaction.email) {
         return res.status(401).send({ message: "Unauthorized access!" });
       }
-      res.send({
-        success: true,
-        result,
-      });
+
+      const update = { $set: data };
+      const result = await myTransactionsCol.updateOne(filter, update);
+      res.send({ success: true, result });
     });
 
     // delete request api
     app.delete("/transactions/:id", sdkMiddleware, async (req, res) => {
       const { id } = req.params;
+      const userEmail = req.user.email;
       const objectId = new ObjectId(id);
       const filter = { _id: objectId };
+      const transaction = await myTransactionsCol.findOne({ _id: objectId });
+      if (!transaction)
+        return res.status(404).send({ message: "Transaction not found" });
+
+      if (userEmail !== transaction.email) {
+        return res.status(401).send({ message: "Unauthorized access!" });
+      }
       const result = await myTransactionsCol.deleteOne(filter);
 
       res.send({
@@ -144,6 +139,7 @@ async function run() {
         result,
       });
     });
+
     // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
