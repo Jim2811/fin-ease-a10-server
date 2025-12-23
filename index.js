@@ -32,31 +32,25 @@ app.get("/", (req, res) => {
 });
 
 // sdk middleware
-app.delete("/transactions/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const objectId = new ObjectId(id);
-    const filter = { _id: objectId };
-    const transaction = await myTransactionsCol.findOne(filter);
-    if (!transaction) {
-      return res.status(404).send({ message: "Transaction not found" });
-    }
-    const result = await myTransactionsCol.deleteOne(filter);
-
-    res.send({
-      success: true,
-      result,
-    });
-  } catch (err) {
-    console.error("Delete error:", err);
-    res.status(500).send({ message: "Server error while deleting transaction" });
+const sdkMiddleware = async (req, res, next) => {
+  const authorization = req.headers.authorization;
+  if (!authorization) {
+    return res.status(401).send({ message: "Unauthorized access!" });
   }
-});
+  const token = authorization.split(" ")[1];
+  try {
+    const decode = await admin.auth().verifyIdToken(token);
+    req.user = decode;
+    next();
+  } catch {
+    return res.status(401).send({ message: "Unauthorized access!" });
+  }
+};
 
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const db = client.db("FinEase");
     const myTransactionsCol = db.collection("transactions");
