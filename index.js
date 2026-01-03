@@ -54,6 +54,7 @@ async function run() {
 
     const db = client.db("FinEase");
     const myTransactionsCol = db.collection("transactions");
+    const reviewCollection = db.collection("reviews");
     // Transaction API
     app.get("/transactions", async (req, res) => {
       const mail = req.query.email;
@@ -132,6 +133,51 @@ async function run() {
         success: true,
         result,
       });
+    });
+    // category total
+    app.get("/category-total-amount", sdkMiddleware, async (req, res) => {
+      const category = req.query.category;
+      const userEmail = req.user.email;
+      const result = await myTransactionsCol
+        .aggregate([
+          {
+            $match: {
+              category: category,
+              email: userEmail,
+            },
+          },
+          {
+            $group: {
+              _id: "$category",
+              total: { $sum: "$amount" },
+            },
+          },
+        ])
+        .toArray();
+      res.send(result);
+    });
+
+    // review
+    app.post("/reviews", sdkMiddleware, async (req, res) => {
+  try {
+    const review = req.body;
+    const existingReview = await reviewCollection.findOne({ email: review.email });
+    if (existingReview) {
+      return res
+        .status(400)
+        .send({ success: false, message: "You have already submitted a review." });
+    }
+    const result = await reviewCollection.insertOne(review);
+    res.send({ success: true, insertedId: result.insertedId });
+  } catch (error) {
+    res.status(500).send({ success: false, message: error.message });
+  }
+});
+
+     app.get("/reviews", async (req, res) => {
+      const cursor = reviewCollection.find({}).sort({ date: -1 }).limit(8);
+      const reviews = await cursor.toArray();
+      res.send(reviews);
     });
 
     // await client.db("admin").command({ ping: 1 });
